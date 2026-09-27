@@ -1,108 +1,86 @@
-// ============================================
-// FILE: frontend/src/components/vendor/VendorDashboard.jsx
-// COMPLETE FIXED VERSION
-// ============================================
 import React, { useState, useEffect } from 'react';
-import { Package, Store, BarChart3, AlertTriangle } from 'lucide-react';
+import { Package, Store, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import VendorOrders from './VendorOrders';
 import VendorRestaurants from './VendorRestaurants';
 import VendorInventory from './VendorInventory';
 import RestaurantComplaints from './RestaurantComplaints';
 
+const TABS = [
+  { id: 'orders',      label: 'Orders',     emoji: '📦', Icon: Package       },
+  { id: 'restaurants', label: 'My Store',   emoji: '🏪', Icon: Store         },
+  { id: 'inventory',   label: 'Inventory',  emoji: '📊', Icon: BarChart3     },
+  { id: 'complaints',  label: 'Complaints', emoji: '⚠️', Icon: AlertTriangle },
+];
+
 export default function VendorDashboard() {
   const { apiCall, setLoading, showNotification, currentUser } = useApp();
-  const [activeTab, setActiveTab] = useState('orders');
-  const [orders, setOrders] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
-  const [inventory, setInventory] = useState([]);
-  const [loadingState, setLoadingState] = useState({
-    orders: false,
-    restaurants: false,
-    inventory: false
+  const [activeTab,    setActiveTab]    = useState('orders');
+  const [orders,       setOrders]       = useState([]);
+  const [restaurants,  setRestaurants]  = useState([]);
+  const [inventory,    setInventory]    = useState([]);
+  const [localLoading, setLocalLoading] = useState({
+    orders: false, restaurants: false, inventory: false,
   });
 
   useEffect(() => {
-    console.log('📊 VendorDashboard mounted, user:', currentUser);
-    // Only load vendor data when the logged-in user is actually a vendor
-    if (!currentUser || currentUser.user_type !== 'vendor') {
-      console.warn('VendorDashboard mounted for non-vendor user; skipping vendor data load');
-      return;
-    }
-    loadVendorData();
+    if (!currentUser || currentUser.user_type !== 'vendor') return;
+    loadAll();
   }, [currentUser]);
 
-  const loadVendorData = async () => {
-    console.log('🔄 Loading vendor data for user:', currentUser?.user_id);
-    
-    // Load all data in parallel
-    await Promise.all([
-      loadOrders(),
-      loadRestaurants(),
-      loadInventory()
-    ]);
+  const loadAll = () => {
+    Promise.all([loadOrders(), loadRestaurants(), loadInventory()]);
   };
 
   const loadOrders = async () => {
-    setLoadingState(prev => ({ ...prev, orders: true }));
+    setLocalLoading((p) => ({ ...p, orders: true }));
     try {
-      console.log('📦 Fetching orders...');
       const data = await apiCall('/orders/vendor/orders');
-      console.log('✅ Orders loaded:', data.orders?.length || 0);
       setOrders(data.orders || []);
-    } catch (error) {
-      console.error('❌ Load orders error:', error);
-      showNotification('Failed to load orders: ' + error.message, 'error');
+    } catch (err) {
+      showNotification('Failed to load orders: ' + err.message, 'error');
       setOrders([]);
     } finally {
-      setLoadingState(prev => ({ ...prev, orders: false }));
+      setLocalLoading((p) => ({ ...p, orders: false }));
     }
   };
 
   const loadRestaurants = async () => {
-    setLoadingState(prev => ({ ...prev, restaurants: true }));
+    setLocalLoading((p) => ({ ...p, restaurants: true }));
     try {
-      console.log('🏪 Fetching restaurants...');
       const data = await apiCall('/restaurants/vendor/my-restaurants');
-      console.log('✅ Restaurants loaded:', data.restaurants?.length || 0);
       setRestaurants(data.restaurants || []);
-    } catch (error) {
-      console.error('❌ Load restaurants error:', error);
-      showNotification('Failed to load restaurants: ' + error.message, 'error');
+    } catch (err) {
+      showNotification('Failed to load restaurants: ' + err.message, 'error');
       setRestaurants([]);
     } finally {
-      setLoadingState(prev => ({ ...prev, restaurants: false }));
+      setLocalLoading((p) => ({ ...p, restaurants: false }));
     }
   };
 
   const loadInventory = async () => {
-    setLoadingState(prev => ({ ...prev, inventory: true }));
+    setLocalLoading((p) => ({ ...p, inventory: true }));
     try {
-      console.log('📊 Fetching inventory...');
       const data = await apiCall('/inventory/vendor');
-      console.log('✅ Inventory loaded:', data.inventory?.length || 0);
       setInventory(data.inventory || []);
-    } catch (error) {
-      console.error('❌ Load inventory error:', error);
-      showNotification('Failed to load inventory: ' + error.message, 'error');
+    } catch (err) {
+      showNotification('Failed to load inventory: ' + err.message, 'error');
       setInventory([]);
     } finally {
-      setLoadingState(prev => ({ ...prev, inventory: false }));
+      setLocalLoading((p) => ({ ...p, inventory: false }));
     }
   };
 
   const updateOrderStatus = async (orderId, status) => {
     setLoading(true);
     try {
-      console.log('🔄 Updating order status:', orderId, status);
       await apiCall(`/orders/${orderId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ order_status: status })
+        body: JSON.stringify({ order_status: status }),
       });
-      showNotification('Order status updated successfully', 'success');
+      showNotification('Order status updated', 'success');
       await loadOrders();
-    } catch (error) {
-      console.error('❌ Update order status error:', error);
+    } catch {
       showNotification('Failed to update order status', 'error');
     } finally {
       setLoading(false);
@@ -112,61 +90,59 @@ export default function VendorDashboard() {
   const restockItem = async (itemId, quantity, reason) => {
     setLoading(true);
     try {
-      console.log('📦 Restocking item:', itemId, 'qty:', quantity);
       await apiCall('/inventory/restock', {
         method: 'POST',
-        body: JSON.stringify({ 
-          item_id: itemId, 
-          quantity, 
-          reason: reason || 'Manual restock' 
-        })
+        body: JSON.stringify({ item_id: itemId, quantity, reason: reason || 'Manual restock' }),
       });
       showNotification('Item restocked successfully', 'success');
       await loadInventory();
-    } catch (error) {
-      console.error('❌ Restock error:', error);
+    } catch {
       showNotification('Failed to restock item', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const tabs = [
-    { id: 'orders', label: '📦 Orders', icon: Package, count: orders.length },
-    { id: 'restaurants', label: '🏪 My Store', icon: Store, count: restaurants.length },
-    { id: 'inventory', label: '📊 Inventory', icon: BarChart3, count: inventory.length },
-    { id: 'complaints', label: '⚠️ Complaints', icon: AlertTriangle, count: 0 }
-  ];
+  const counts = { orders: orders.length, restaurants: restaurants.length, inventory: inventory.length, complaints: 0 };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Vendor Dashboard</h1>
-        <p className="text-gray-600">Manage your store, orders, and inventory</p>
+
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900">Vendor Dashboard</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Manage your store, orders, and inventory</p>
+        </div>
+        <button
+          onClick={loadAll}
+          className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-200 px-3 py-2 rounded-xl transition-all"
+        >
+          <RefreshCw size={14} />
+          Refresh All
+        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl shadow-sm mb-6 overflow-hidden">
-        <div className="flex border-b overflow-x-auto">
-          {tabs.map((tab) => (
+      {/* Tab bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+        <div className="flex border-b overflow-x-auto scrollbar-none">
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-max px-6 py-4 font-semibold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-max px-5 py-4 font-semibold text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-red-600 border-b-2 border-red-600 bg-red-50'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
+              <span>{tab.emoji}</span>
               <span>{tab.label}</span>
-              {tab.count > 0 && (
-                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                  activeTab === tab.id 
-                    ? 'bg-red-600 text-white' 
-                    : 'bg-gray-200 text-gray-700'
+              {counts[tab.id] > 0 && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  activeTab === tab.id ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-600'
                 }`}>
-                  {tab.count}
+                  {counts[tab.id]}
                 </span>
               )}
             </button>
@@ -174,38 +150,33 @@ export default function VendorDashboard() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      {/* Tab content */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         {activeTab === 'orders' && (
-          <VendorOrders 
-            orders={orders} 
+          <VendorOrders
+            orders={orders}
             updateOrderStatus={updateOrderStatus}
-            loading={loadingState.orders}
+            loading={localLoading.orders}
             onRefresh={loadOrders}
           />
         )}
-
         {activeTab === 'restaurants' && (
-          <VendorRestaurants 
+          <VendorRestaurants
             restaurants={restaurants}
-            loading={loadingState.restaurants}
+            loading={localLoading.restaurants}
             onRefresh={loadRestaurants}
           />
         )}
-
         {activeTab === 'inventory' && (
-          <VendorInventory 
+          <VendorInventory
             inventory={inventory}
             restaurants={restaurants}
             restockItem={restockItem}
-            loading={loadingState.inventory}
+            loading={localLoading.inventory}
             onRefresh={loadInventory}
           />
         )}
-
-        {activeTab === 'complaints' && (
-          <RestaurantComplaints />
-        )}
+        {activeTab === 'complaints' && <RestaurantComplaints />}
       </div>
     </div>
   );

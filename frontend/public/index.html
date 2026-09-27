@@ -3,26 +3,87 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#e23744" />
-    <meta name="description" content="Campus Cart - Food, Grocery & Stationary Delivery System" />
-    <title>Campus Cart - Your Campus Delivery Partner</title>
+    <meta name="theme-color" content="#e11d48" />
+    <meta name="description" content="CampusCart — Order food, groceries, and stationery delivered right to your campus. Fast, fresh, and convenient." />
+    <meta name="keywords" content="campus food delivery, college canteen, campus cart, food ordering, student delivery" />
+    <meta property="og:title" content="CampusCart — Campus Delivery Made Easy" />
+    <meta property="og:description" content="Order from your favourite campus outlets — food, groceries, and stationery delivered to your doorstep." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>CampusCart — Your Campus Delivery Partner 🍽️</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS with custom config -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+            animation: {
+              'slide-in-right': 'slideInRight 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+              'slide-in-top':   'slideInTop 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+              'fade-in':        'fadeIn 0.25s ease-out',
+              'bounce-in':      'bounceIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+            },
+            keyframes: {
+              slideInRight: {
+                from: { transform: 'translateX(110%)', opacity: '0' },
+                to:   { transform: 'translateX(0)',    opacity: '1' },
+              },
+              slideInTop: {
+                from: { transform: 'translateY(-20px)', opacity: '0' },
+                to:   { transform: 'translateY(0)',     opacity: '1' },
+              },
+              fadeIn: {
+                from: { opacity: '0' },
+                to:   { opacity: '1' },
+              },
+              bounceIn: {
+                '0%':   { transform: 'scale(0.85)', opacity: '0' },
+                '70%':  { transform: 'scale(1.04)' },
+                '100%': { transform: 'scale(1)',    opacity: '1' },
+              },
+            },
+          }
+        }
+      }
+    </script>
+
+    <!-- Razorpay SDK -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    
+
     <style>
+      /* Base font */
+      *, *::before, *::after { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+      body { background-color: #f9fafb; -webkit-font-smoothing: antialiased; }
+
+      /* Legacy slide-in (used by .animate-slide-in class in JSX) */
       @keyframes slide-in {
-        from {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
+        from { transform: translateX(110%); opacity: 0; }
+        to   { transform: translateX(0);    opacity: 1; }
       }
-      .animate-slide-in {
-        animation: slide-in 0.3s ease-out;
-      }
+      .animate-slide-in { animation: slide-in 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+      /* Custom thin scrollbar */
+      ::-webkit-scrollbar            { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track      { background: #f1f5f9; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb      { background: #cbd5e1; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover{ background: #94a3b8; }
+
+      /* Focus ring */
+      *:focus-visible { outline: 2px solid #e11d48; outline-offset: 2px; border-radius: 4px; }
+
+      /* Line-clamp utilities (for older browsers that need them) */
+      .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+      .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
     </style>
   </head>
   <body>

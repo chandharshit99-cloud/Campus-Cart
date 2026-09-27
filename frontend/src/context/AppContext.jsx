@@ -1,126 +1,135 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AppContext = createContext();
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
 };
 
 export const AppProvider = ({ children }) => {
-  const [authToken, setAuthToken] = useState(sessionStorage.getItem('authToken'));
-  const [currentUser, setCurrentUser] = useState(
-    sessionStorage.getItem('currentUser') ? JSON.parse(sessionStorage.getItem('currentUser')) : null
-  );
+  const [authToken,    setAuthToken]    = useState(() => sessionStorage.getItem('authToken'));
+  const [currentUser,  setCurrentUser]  = useState(() => {
+    try {
+      const u = sessionStorage.getItem('currentUser');
+      return u ? JSON.parse(u) : null;
+    } catch { return null; }
+  });
   const [cart, setCart] = useState(() => {
     try {
-      const saved = sessionStorage.getItem('cart');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
+      const c = sessionStorage.getItem('cart');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
   });
 
-  const [currentView, setCurrentViewState] = useState('login');
-  const [selectedOutlet, setSelectedOutlet] = useState(null);
-  const [selectedStore, setSelectedStore] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const setCurrentView = (view) => {
+  const [currentView,    setCurrentViewState] = useState('login');
+  const [selectedOutlet, setSelectedOutlet]   = useState(null);
+  const [selectedStore,  setSelectedStore]    = useState(null);
+  const [loading,        setLoading]          = useState(false);
+  const [notification,   setNotification]     = useState(null);
+
+  // ─── Navigation ──────────────────────────────────────────────────────────────
+  const setCurrentView = useCallback((view) => {
     setCurrentViewState(view);
     window.history.pushState({ view }, '', window.location.pathname);
-  };
-
-  useEffect(() => {
-    window.history.replaceState({ view: currentView }, '', window.location.pathname);
-
-    const handlePopState = (event) => {
-      if (event.state && event.state.view) {
-        setCurrentViewState(event.state.view);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
-    if (authToken && currentUser) {
-      setCurrentView(currentUser.user_type === 'student' ? 'outlets' : 'vendor-dashboard');
-    }
+    window.history.replaceState({ view: currentView }, '', window.location.pathname);
+    const handlePop = (e) => {
+      if (e.state?.view) setCurrentViewState(e.state.view);
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
 
+  // ─── Auto-redirect after login ───────────────────────────────────────────────
+  useEffect(() => {
+    if (authToken && currentUser) {
+      if (currentUser.user_type === 'student') {
+        setCurrentView('outlets');
+      } else if (currentUser.user_type === 'vendor') {
+        setCurrentView('vendor-dashboard');
+      } else if (['support_agent', 'senior_support', 'admin', 'support', 'agent'].includes(currentUser.user_type)) {
+        setCurrentView('support');
+      } else {
+        setCurrentView('outlets');
+      }
+    }
   }, [authToken, currentUser]);
+
+  // ─── Persist cart to sessionStorage ─────────────────────────────────────────
   useEffect(() => {
     try {
       sessionStorage.setItem('cart', JSON.stringify(cart));
     } catch (e) {
-      console.error('Error saving cart to sessionStorage', e);
+      console.warn('Could not save cart to sessionStorage', e);
     }
   }, [cart]);
 
-  const showNotification = (message, type = 'info') => {
+  // ─── Notification (single timeout source of truth) ───────────────────────────
+  const showNotification = useCallback((message, type = 'info') => {
+    if (!message) {
+      setNotification(null);
+      return;
+    }
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
-  };
+  }, []);
 
-  const apiCall = async (endpoint, options = {}) => {
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  // ─── API helper ──────────────────────────────────────────────────────────────
+  const apiCall = useCallback(async (endpoint, options = {}) => {
+    const API_BASE_URL =
+      process.env.REACT_APP_API_URL ||
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:3000/api'
         : 'https://campus-cart-backend-23np.onrender.com/api');
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
-        ...(authToken && { Authorization: `Bearer ${authToken}` })
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
       },
-      ...options
+      ...options,
     };
 
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'API request failed');
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
-    }
-  };
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(data.error || `Request failed (${response.status})`);
+    }
+
+    return data;
+  }, [authToken]);
+
+  // ─── Auth ─────────────────────────────────────────────────────────────────────
   const login = async (email, password) => {
     setLoading(true);
     try {
       const data = await apiCall('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body:   JSON.stringify({ email, password }),
       });
-      
+
       setAuthToken(data.token);
       setCurrentUser(data.user);
-
       sessionStorage.setItem('authToken', data.token);
       sessionStorage.setItem('currentUser', JSON.stringify(data.user));
-      
-      showNotification(`Welcome ${data.user.full_name}!`, 'success');
-  
+
+      showNotification(`Welcome back, ${data.user.full_name.split(' ')[0]}! 👋`, 'success');
+
       if (data.user.user_type === 'student') {
         setCurrentView('outlets');
       } else if (data.user.user_type === 'vendor') {
         setCurrentView('vendor-dashboard');
-      } else if (['support_agent', 'senior_support', 'admin'].includes(data.user.user_type)) {
+      } else if (['support_agent', 'senior_support', 'admin', 'support', 'agent'].includes(data.user.user_type)) {
         setCurrentView('support');
       } else {
         setCurrentView('outlets');
       }
     } catch (error) {
-      showNotification(error.message || 'Login failed', 'error');
+      showNotification(error.message || 'Login failed. Check your credentials.', 'error');
       throw error;
     } finally {
       setLoading(false);
@@ -132,15 +141,16 @@ export const AppProvider = ({ children }) => {
     try {
       const data = await apiCall('/auth/register', {
         method: 'POST',
-        body: JSON.stringify(userData)
+        body:   JSON.stringify(userData),
       });
-      
+
       setAuthToken(data.token);
       setCurrentUser(data.user);
       sessionStorage.setItem('authToken', data.token);
       sessionStorage.setItem('currentUser', JSON.stringify(data.user));
-      
-      showNotification(`Account created successfully! Welcome ${data.user.full_name}`, 'success');
+
+      showNotification(`Account created! Welcome, ${data.user.full_name.split(' ')[0]}! 🎉`, 'success');
+
       if (data.user.user_type === 'student') {
         setCurrentView('outlets');
       } else if (data.user.user_type === 'vendor') {
@@ -149,7 +159,7 @@ export const AppProvider = ({ children }) => {
         setCurrentView('outlets');
       }
     } catch (error) {
-      showNotification(error.message || 'Signup failed', 'error');
+      showNotification(error.message || 'Sign up failed. Please try again.', 'error');
       throw error;
     } finally {
       setLoading(false);
@@ -157,59 +167,43 @@ export const AppProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // Revoke current session on server (best-effort)
-    const revoke = async () => {
-      try {
-        if (authToken) {
-          await apiCall('/auth/logout', { method: 'POST' });
-        }
-      } catch (e) {
-        // ignore errors during logout
-      }
-    };
-
-    revoke();
+    // Best-effort server-side logout
+    if (authToken) {
+      apiCall('/auth/logout', { method: 'POST' }).catch(() => {});
+    }
 
     setAuthToken(null);
     setCurrentUser(null);
     setCart([]);
     setSelectedOutlet(null);
     setSelectedStore(null);
-    // Only clear sessionStorage keys related to this tab
+
     sessionStorage.removeItem('authToken');
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('cart');
+
     setCurrentView('login');
-    showNotification('Logged out successfully', 'info');
+    showNotification('Signed out successfully', 'info');
   };
 
-  // List sessions for current user (calls backend)
+  // ─── Session management ───────────────────────────────────────────────────────
   const listSessions = async () => {
-    try {
-      const data = await apiCall('/auth/sessions', { method: 'GET' });
-      return data.sessions;
-    } catch (error) {
-      console.error('Failed to list sessions', error);
-      throw error;
-    }
+    const data = await apiCall('/auth/sessions');
+    return data.sessions;
   };
 
-  // Revoke a specific session by sessionId
   const revokeSession = async (sessionId) => {
-    try {
-      await apiCall(`/auth/sessions/${sessionId}`, { method: 'DELETE' });
-      return true;
-    } catch (error) {
-      console.error('Failed to revoke session', error);
-      throw error;
-    }
+    await apiCall(`/auth/sessions/${sessionId}`, { method: 'DELETE' });
+    return true;
   };
 
+  // ─── Cart helpers ─────────────────────────────────────────────────────────────
   const clearCart = () => {
     setCart([]);
-    localStorage.removeItem('cart');
+    sessionStorage.removeItem('cart'); // was incorrectly using localStorage before
   };
 
+  // ─── Context value ────────────────────────────────────────────────────────────
   const value = {
     authToken,
     currentUser,
@@ -231,7 +225,7 @@ export const AppProvider = ({ children }) => {
     signup,
     logout,
     listSessions,
-    revokeSession
+    revokeSession,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

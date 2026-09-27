@@ -15,10 +15,24 @@ const paymentRoutes = require('./routes/payment');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3001')
+    .split(',')
+    .map((o) => o.trim());
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
-    credentials: true
+    origin: function (origin, callback) {
+        // Allow requests with no origin (e.g. mobile apps, Postman, curl)
+        if (!origin) return callback(null, true);
+        if (ALLOWED_ORIGINS.includes(origin)) {
+            return callback(null, true);
+        }
+        callback(new Error(`CORS: Origin "${origin}" is not allowed`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

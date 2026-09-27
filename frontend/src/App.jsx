@@ -9,7 +9,7 @@ import StoresView from './components/StoresView';
 import StoreMenu from './components/StoreMenu';
 import MyOrders from './components/MyOrders';
 import VendorDashboard from './components/vendor/VendorDashboard';
-import SupportButton from './components/support/SupportButton'; // Add this import
+import SupportButton from './components/support/SupportButton';
 import SupportDashboard from './components/support/SupportDashboard';
 import { useApp } from './context/AppContext';
 
@@ -18,22 +18,28 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {notification && <Notification {...notification} />}
+      {/* Toast notification */}
+      {notification && <Notification />}
+
+      {/* Full-screen loading overlay */}
       {loading && <LoadingSpinner />}
-      
+
+      {/* Sticky header (only when logged in) */}
       {currentUser && <Header />}
-      
-      <main className="pb-20">
-        {currentView === 'login' && <Login />}
-        {currentView === 'outlets' && <OutletsView />}
-        {currentView === 'stores' && <StoresView />}
-        {currentView === 'store-menu' && <StoreMenu />}
-        {currentView === 'my-orders' && <MyOrders />}
+
+      {/* Page content */}
+      <main className={currentUser ? 'pb-20' : ''}>
+        {currentView === 'login'            && <Login />}
+        {currentView === 'outlets'          && <OutletsView />}
+        {currentView === 'stores'           && <StoresView />}
+        {currentView === 'store-menu'       && <StoreMenu />}
+        {currentView === 'my-orders'        && <MyOrders />}
         {currentView === 'vendor-dashboard' && <VendorDashboard />}
-        {currentView === 'support' && <SupportDashboard />}
+        {currentView === 'support'          && <SupportDashboard />}
       </main>
 
-      {currentUser && currentUser.user_type === 'student' && <SupportButton />}
+      {/* Support chat button — students only */}
+      {currentUser?.user_type === 'student' && <SupportButton />}
     </div>
   );
 }
