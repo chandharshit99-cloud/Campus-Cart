@@ -127,7 +127,7 @@ Campus-Cart/
 
 ### 1. **Clone the Repository**
 ```bash
-git clone https://github.com/0ke1vce/Campus-Cart.git
+git clone https://github.com/chandharshit99-cloud/Campus-Cart.git
 cd Campus-Cart
 ```
 
