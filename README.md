@@ -2,7 +2,8 @@
 
 **Campus Cart** is a comprehensive multi-outlet food, grocery, and stationery ordering platform tailored for university campuses where off-campus delivery services (like Zomato, Swiggy, Zepto, or Blinkit) are unavailable or restricted..
 
-The system connects **Students**, **Vendors**, and **Support/Admin Teams** through a real-time web portal, featuring automated inventory tracking, live ticket support, and **Razorpay Standard Checkout** payment gateway integration.
+The system connects **Students**, **Vendors**, and **Support/Admin Teams** through a real-time web portal, featuring automated inventory tracking, live ticket support, and **Razorpay Standard Checkout** payment gateway integration...
+
 
 ---
 
